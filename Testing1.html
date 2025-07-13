@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>时间盒子</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg-color: #000;
+      --text-color: #00ffff;
+      --shadow-color: #00ffff88;
+      --box-bg: #111;
+      --font-style: 'Orbitron', sans-serif;
+      --active-glow: 0 0 16px var(--text-color), 0 0 8px var(--text-color);
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      background-color: var(--bg-color);
+      font-family: var(--font-style);
+      color: var(--text-color);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      transition: background 0.3s, color 0.3s;
+      position: relative;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+      width: 100vw;
+      padding: 0 20px;
+      align-items: center;
+    }
+
+    .left-buttons, .right-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .center-screen {
+      background-color: var(--box-bg);
+      box-shadow: inset 0 0 40px var(--shadow-color), 0 0 60px var(--shadow-color);
+      padding: 60px 80px;
+      border-radius: 20px;
+      text-align: center;
+      min-width: 60vw;
+    }
+
+    .time-display {
+      font-size: 10vw;
+      text-shadow:
+        0 0 16px var(--shadow-color),
+        0 0 36px var(--shadow-color),
+        0 0 60px var(--shadow-color);
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .stopwatch-controls {
+      margin-top: 20px;
+    }
+
+    button {
+      background: none;
+      border: 2px solid var(--text-color);
+      color: var(--text-color);
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 18px;
+      transition: 0.3s;
+      min-width: 120px;
+    }
+
+    button:active {
+      transform: scale(0.97);
+      box-shadow: var(--active-glow);
+    }
+
+    button.active {
+      background-color: var(--text-color);
+      color: var(--bg-color);
+      box-shadow: 0 0 16px var(--text-color);
+      font-weight: bold;
+    }
+
+    button.theme-blue.active::after {
+      content: " 🔵";
+    }
+
+    button.theme-light.active::after {
+      content: " ⚪";
+    }
+
+    button.theme-red.active::after {
+      content: " 🔴";
+    }
+
+    button.font-orbitron.active {
+      font-family: 'Orbitron', sans-serif;
+    }
+
+    button.font-lcd.active {
+      font-family: 'Share Tech Mono', monospace;
+    }
+
+    #easter-egg {
+      position: absolute;
+      bottom: 50px;
+      width: 100%;
+      text-align: center;
+      font-size: 16px;
+      font-family: var(--font-style);
+      color: var(--text-color);
+      opacity: 0;
+      transition: opacity 0.5s ease-in-out;
+    }
+
+    #easter-egg.show {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body ondblclick="revealEasterEgg()">
+  <div class="container">
+    <div class="left-buttons">
+      <button class="font-orbitron" onclick="setFont(this, 'Orbitron')">科技体</button>
+      <button class="font-lcd" onclick="setFont(this, 'Share Tech Mono')">LCD</button>
+    </div>
+
+    <div class="center-screen">
+      <div>
+        <button onclick="switchMode(this, 'clock')" class="mode-btn active">时钟</button>
+        <button onclick="switchMode(this, 'stopwatch')" class="mode-btn">秒表</button>
+      </div>
+      <div id="clockDisplay" class="time-display">00:00:00</div>
+      <div id="stopwatchDisplay" class="hidden">
+        <div class="time-display" id="swTime">00:00:00</div>
+        <div class="stopwatch-controls">
+          <button class="sw-btn" onclick="handleSWClick(this, startStopwatch)">开始</button>
+          <button class="sw-btn" onclick="handleSWClick(this, stopStopwatch)">暂停</button>
+          <button class="sw-btn" onclick="handleSWClick(this, resetStopwatch)">重置</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="right-buttons">
+      <button class="theme-blue active" onclick="setTheme(this, 'blue')">蓝色主题</button>
+      <button class="theme-light" onclick="setTheme(this, 'light')">白色主题</button>
+      <button class="theme-red" onclick="setTheme(this, 'red')">红色主题</button>
+    </div>
+  </div>
+
+  <div id="easter-egg">此网站为Derek Wang在7/13/2024制作</div>
+
+  <script>
+    // 时钟
+    function updateClock() {
+      const now = new Date();
+      const h = String(now.getHours()).padStart(2, '0');
+      const m = String(now.getMinutes()).padStart(2, '0');
+      const s = String(now.getSeconds()).padStart(2, '0');
+      document.getElementById('clockDisplay').textContent = `${h}:${m}:${s}`;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // 秒表
+    let swRunning = false, swTime = 0, swInterval;
+    const swDisplay = document.getElementById('swTime');
+
+    function formatTime(t) {
+      const h = String(Math.floor(t / 3600)).padStart(2, '0');
+      const m = String(Math.floor((t % 3600) / 60)).padStart(2, '0');
+      const s = String(t % 60).padStart(2, '0');
+      return `${h}:${m}:${s}`;
+    }
+
+    function startStopwatch() {
+      if (!swRunning) {
+        swInterval = setInterval(() => {
+          swTime++;
+          swDisplay.textContent = formatTime(swTime);
+        }, 1000);
+        swRunning = true;
+      }
+    }
+
+    function stopStopwatch() {
+      clearInterval(swInterval);
+      swRunning = false;
+    }
+
+    function resetStopwatch() {
+      stopStopwatch();
+      swTime = 0;
+      swDisplay.textContent = "00:00:00";
+    }
+
+    function handleSWClick(button, action) {
+      document.querySelectorAll('.sw-btn').forEach(btn => btn.classList.remove('active'));
+      button.classList.add('active');
+      action();
+    }
+
+    function switchMode(button, mode) {
+      document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+      button.classList.add('active');
+      if (mode === 'clock') {
+        document.getElementById('clockDisplay').classList.remove('hidden');
+        document.getElementById('stopwatchDisplay').classList.add('hidden');
+      } else {
+        document.getElementById('clockDisplay').classList.add('hidden');
+        document.getElementById('stopwatchDisplay').classList.remove('hidden');
+      }
+    }
+
+    function setTheme(button, theme) {
+      document.querySelectorAll('.right-buttons button').forEach(btn => btn.classList.remove('active'));
+      button.classList.add('active');
+      if (theme === 'blue') {
+        document.documentElement.style.setProperty('--bg-color', '#000');
+        document.documentElement.style.setProperty('--text-color', '#00ffff');
+        document.documentElement.style.setProperty('--shadow-color', '#00ffffcc');
+        document.documentElement.style.setProperty('--box-bg', '#111');
+      } else if (theme === 'light') {
+        document.documentElement.style.setProperty('--bg-color', '#ffffff');
+        document.documentElement.style.setProperty('--text-color', '#000');
+        document.documentElement.style.setProperty('--shadow-color', '#555555cc');
+        document.documentElement.style.setProperty('--box-bg', '#ffffff');
+      } else if (theme === 'red') {
+        document.documentElement.style.setProperty('--bg-color', '#220000');
+        document.documentElement.style.setProperty('--text-color', '#ff3333');
+        document.documentElement.style.setProperty('--shadow-color', '#ff3333cc');
+        document.documentElement.style.setProperty('--box-bg', '#330000');
+      }
+    }
+
+    function setFont(button, fontName) {
+      document.querySelectorAll('.left-buttons button').forEach(btn => btn.classList.remove('active'));
+      button.classList.add('active');
+      const font = `'${fontName}', monospace`;
+      document.documentElement.style.setProperty('--font-style', font);
+    }
+
+    function revealEasterEgg() {
+      const egg = document.getElementById("easter-egg");
+      egg.classList.add("show");
+      setTimeout(() => egg.classList.remove("show"), 5000);
+    }
+  </script>
+</body>
+</html>
