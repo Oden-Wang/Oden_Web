@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Oden-W_002</title>
+<style>
+  body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #eee;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+  }
+  h1 {
+    margin: 20px;
+  }
+  .canvas-container {
+    background: url('https://www.transparenttextures.com/patterns/wood-pattern.png');
+    padding: 20px;
+    border: 5px solid #654321;
+    border-radius: 15px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.5);
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  canvas {
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 10px;
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.3);
+    cursor: crosshair;
+  }
+  .controls {
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  button, input[type=range], input[type=color] {
+    padding: 5px 10px;
+    font-size: 16px;
+    cursor: pointer;
+    user-select: none;
+  }
+  label {
+    font-weight: bold;
+  }
+</style>
+</head>
+<body>
+
+<h3><em>此网站为 <strong> OD_W </strong>在7/15/2025制作</em></h3>
+    <h1>多功能高级画板</h1>
+<div class="canvas-container">
+  <canvas id="paintCanvas" width="900" height="700"></canvas>
+  <div class="controls">
+    <label for="colorPicker1">颜色1:</label>
+    <input type="color" id="colorPicker1" value="#ff0000" title="主色" />
+    <label for="colorPicker2">颜色2:</label>
+    <input type="color" id="colorPicker2" value="#0000ff" title="辅助色" />
+    
+    <label for="brushSize">大小:</label>
+    <input type="range" id="brushSize" min="1" max="50" value="10" />
+    
+    <button onclick="clearCanvas()">清除画板</button>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('paintCanvas');
+const ctx = canvas.getContext('2d');
+
+const colorPicker1 = document.getElementById('colorPicker1');
+const colorPicker2 = document.getElementById('colorPicker2');
+const brushSizeInput = document.getElementById('brushSize');
+
+let painting = false;
+let strokes = []; // 所有笔画
+let currentStroke = null; // 当前笔画，包含点和颜色
+
+canvas.addEventListener('mousedown', (e) => {
+  painting = true;
+  currentStroke = {
+    points: [],
+    color1: colorPicker1.value,
+    color2: colorPicker2.value,
+    size: brushSizeInput.value
+  };
+  addPoint(e);
+});
+canvas.addEventListener('mouseup', () => {
+  painting = false;
+  if (currentStroke && currentStroke.points.length > 0) {
+    strokes.push(currentStroke);
+  }
+  currentStroke = null;
+});
+canvas.addEventListener('mouseout', () => {
+  painting = false;
+  if (currentStroke && currentStroke.points.length > 0) {
+    strokes.push(currentStroke);
+  }
+  currentStroke = null;
+});
+canvas.addEventListener('mousemove', (e) => {
+  if (!painting) return;
+  addPoint(e);
+  redraw();
+});
+
+function addPoint(e) {
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  if (!currentStroke) return;
+  currentStroke.points.push({x, y});
+}
+
+// 清除画布
+function clearCanvas() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  strokes = [];
+  currentStroke = null;
+}
+
+// 画单点，双色叠加
+function drawPoint(x, y, size, color1, color2) {
+  ctx.fillStyle = color1;
+  ctx.beginPath();
+  ctx.arc(x, y, size, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = color2;
+  ctx.beginPath();
+  ctx.arc(x, y, size * 0.6, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+// 画笔画，平滑连接，双色
+function drawStroke(stroke) {
+  if (stroke.points.length === 0) return;
+  if (stroke.points.length === 1) {
+    let p = stroke.points[0];
+    drawPoint(p.x, p.y, stroke.size, stroke.color1, stroke.color2);
+    return;
+  }
+
+  // 主色线条
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = stroke.size;
+  ctx.strokeStyle = stroke.color1;
+  ctx.beginPath();
+  ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+  for (let i = 1; i < stroke.points.length; i++) {
+    ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
+  }
+  ctx.stroke();
+
+  // 辅助色线条
+  ctx.lineWidth = stroke.size * 0.6;
+  ctx.strokeStyle = stroke.color2;
+  ctx.beginPath();
+  ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+  for (let i = 1; i < stroke.points.length; i++) {
+    ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
+  }
+  ctx.stroke();
+}
+
+// 重绘所有
+function redraw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  for (let s of strokes) {
+    drawStroke(s);
+  }
+  if (currentStroke) {
+    drawStroke(currentStroke);
+  }
+}
+
+clearCanvas();
+</script>
+
+</body>
+</html>
